@@ -1,0 +1,164 @@
+
+
+No aplicativo (mobile e web), o usuário terá acesso a uma **interface estilo Obsidian** para gerenciar e visualizar suas notas:
+
+- **Explorador de notas (áreas temáticas)**: Uma coluna lateral listará as categorias/áreas criadas. Essas categorias funcionam como **pastas** virtuais (p. ex., "Trabalho", "Saúde", "Pessoal"). O usuário pode navegar por elas para filtrar as notas. Novas categorias podem ser sugeridas pela IA ou criadas manualmente, e as notas automaticamente classificadas aparecerão na pasta relevante. Assim como no Obsidian, teremos uma visualização hierárquica: no lado esquerdo da tela, uma lista de pastas e subpastas.
+- **Lista de anotações e metadados**: Ao selecionar uma categoria (ou "Todas as Notas"), o painel principal exibirá uma lista dos títulos ou prévias de cada nota, juntamente com **metadados visíveis** – por exemplo, data de criação, prazo (se houver), origem (ícone de WhatsApp ou de teclado para indicar como foi capturada) e possivelmente tags. O usuário pode clicar/toque em uma nota para abrir seu conteúdo completo.
+- **Visualização/edição de nota**: A nota aberta mostrará o texto completo e quaisquer conteúdo gerado pela IA associado:
+    - Se houve resposta de pesquisa, pode aparecer abaixo do texto original, possivelmente destacada ou colapsada até ser expandida.
+    - Se a nota tiver tarefas extraídas, pode aparecer uma lista de _checkboxes_ de tarefas derivadas.
+    - O usuário poderá **editar a nota** (principalmente as criadas via app; notas via WhatsApp também podem ser editadas aqui se o usuário desejar refiná-las).
+    - Qualquer edição feita na interface será sincronizada no banco de dados.
+- **Inspirado no Obsidian**: Imitaremos elementos de UX do Obsidian para familiaridade:
+    - Modo escuro com fundo escuro e texto claro (e modo claro opcional).
+    - Fontes monoespaçadas ou estéticas de editor de Markdown para dar sensação de escrita simples.
+    - Possibilidade de usar **Markdown** básico para formatação (negrito, itálico, listas) nas notas – opcional, mas se implementado, podemos usar um plugin Markdown do Flutter para renderizar.
+    - **Painel de visualização vs edição**: No Obsidian há modos de edição e pré-visualização. Podemos simplificar mostrando sempre em modo editável estilo live preview (edição WYSIWYG simples).
+    - **Painel lateral**: Além das pastas, pode haver uma seção para "Todos os arquivos" e um campo de busca global para filtrar notas por texto.
+    - **Backlinks e ligações**: Em versões futuras, poderíamos implementar referência entre notas (links wiki-style). Por ora, foquemos em categorias e tags.
+- **Exemplo de organização**: Suponha que o usuário tenha notas de trabalho e pessoais. Ele verá duas pastas: "Trabalho" e "Pessoal". Em "Trabalho", talvez subpastas por projeto (se IA detectou projetos distintos). Ao clicar na pasta, notas correspondentes aparecem listadas. Isso reflete a estrutura de vault do Obsidian onde **a coluna esquerda mostra as pastas (tópicos) e a direita, o conteúdo selecionado**.
+- **Responsividade**: No mobile, a interface deve se adaptar:
+    - Podemos usar um **NavigationDrawer** ou menu hambúrguer para as categorias (já que não há espaço lateral).
+    - A lista de notas pode virar a tela principal e ao tocar em uma nota, abre uma nova tela com o conteúdo.
+    - No tablet ou web (telas maiores), podemos mostrar a coluna de pastas, a lista e o conteúdo simultaneamente (layout de três colunas, se adequado, ou duas colunas).
+- **Interação com IA via UI**: O app/web também permitirá que o usuário solicite ações de IA manualmente. Por exemplo, dentro de uma nota o usuário pode clicar em "Gerar resumo" ou "Sugerir plano de ação" e o sistema chamará a IA correspondente, exibindo o resultado na interface (e possivelmente notificando por WhatsApp ou email se configurado).
+- **Envio por E-mail**: A interface web terá uma opção para **enviar nota(s) por email**. O usuário, após ativar essa funcionalidade (por segurança, devemos requerer confirmação do email destino), pode selecionar uma ou várias notas e clicar "Enviar por email". O backend então compilará o conteúdo (por exemplo, em formato Markdown ou PDF simples) e enviará para o endereço do usuário. Isso é útil para arquivar ou compartilhar. Alternativamente, o usuário pode configurar um _relatório diário_ por email contendo as novas notas ou insights gerados no dia – porém, isso somente se ele ativar explicitamente, conforme solicitado (evitando envios não autorizados).
+### Cadastro e Login
+
+- **Cadastro de usuários**: O aplicativo suportará cadastro via email e senha (ou número de telefone e senha, podendo integrar com WhatsApp). O usuário fornecerá um identificador único (email recomendado) e criará uma senha. Poderemos também solicitar um número de telefone no cadastro se quisermos vincular diretamente ao WhatsApp, mas isso pode ser opcional (pode vincular depois). Após cadastro, um e-mail de verificação pode ser enviado (se usando Firebase Auth ou similar, isso já é padrão, garantindo que o email pertence ao usuário).
+    
+- **Login seguro**: Credenciais de login (email/telefone + senha) serão enviadas de forma segura (sempre sobre conexão HTTPS/TLS). No backend, as senhas nunca são armazenadas em texto puro – serão **hasheadas com algoritmo robusto (bcrypt ou idealmente Argon2)** com salt único por senha para segurança. Algoritmos modernos como Argon2id são recomendados por oferecerem alta resistência a ataques de força bruta e uso de GPU. Caso a plataforma escolhida (ex: Firebase Authentication) cuide disso internamente, garantiremos que um método forte está em uso (Firebase por exemplo usa **bcrypt com salt** para senhas padrão, ou podemos integrar o Algoritmo Argon2 via Cloud Functions no caso de um backend próprio).
+    
+- **Autenticação via provedores (futuro)**: Embora não obrigatório, poderíamos facilitar login usando Google/Apple ID para reduzir atrito, mas como o foco é um prompt para geração de código, manteremos o **login/senha tradicional** inicialmente, pois é direto de implementar e testar.
+    
+- **Proteção contra ataques**: Implementaremos verificações anti-fraude como:
+    
+    - Limitar tentativas de login seguidas (e.g., após 5 falhas, bloquear temporariamente ou exigir captcha).
+    - Requisitos de senha forte na criação (mínimo de caracteres, etc).
+    - Armazenar hashes de forma segura (Argon2id com parâmetros de custo adequados, salt automático e possivelmente _pepper_ adicional guardado em servidor, se houver backend próprio, para defesa extra).
+
+### Sessão e Autologin
+
+- **Token de sessão**: Após login bem-sucedido, o backend emitirá um token seguro para manter a sessão do usuário. Pode ser um **JWT (JSON Web Token)** assinado contendo o ID do usuário e validade, ou um token de sessão opaco armazenado no banco com referência. Esse token será fornecido ao app para autenticações subsequentes.
+    
+- **Armazenamento seguro do token**: No aplicativo Flutter, usaremos armazenamento seguro do dispositivo para guardar o token de login:
+    
+    - Em Android, o Secure Storage (KeyStore) via plugin como `flutter_secure_storage`.
+    - Em iOS, Keychain (também via plugin seguro).
+    - Na Web, cookies httpOnly ou `localStorage` com medidas de proteção (cookies de sessão com flag Secure e SameSite preferencialmente). Isso permite **login automático** (autologin) sem o usuário precisar digitar credenciais toda vez. Quando o app abre, ele verifica se há um token válido salvo e o envia ao servidor para verificar validade e obter informações atualizadas do perfil.
+- **Autologin via link mágico (alternativa)**: Podemos também implementar um sistema de **Magic Link**: o usuário insere email, recebe um link e ao clicar, o app autentica automaticamente (útil na web). Mas dado o escopo, o autologin será principalmente via token persistido no dispositivo mesmo.
+    
+- **Expiração e renovação**: Para segurança, tokens de sessão podem expirar (ex: em 30 dias). Implementaremos **refresh tokens** se usando JWT (um refresh token de longa duração, guardado seguro, para obter novos tokens de acesso sem novo login). Assim, a experiência permanece sem fricção mas mantemos controle de sessões. Em backends como Firebase Auth isso é gerenciado automaticamente pelo SDK.
+    
+- **Logout**: Usuário pode manualmente sair da conta, o que limpará os tokens salvos. Além disso, se detectarmos comprometimento (ex: login de local suspeito), poderemos invalidar tokens no servidor (manter lista de revogados ou mudar secret key, etc.).
+    
+
+### Vinculação com WhatsApp
+
+- Dentro da seção de perfil/configurações, o usuário poderá **associar seu número de WhatsApp** à conta:
+    
+    - Ele fornece o número, o sistema envia uma mensagem via WhatsApp com um código de verificação, o usuário confirma no app.
+    - Após verificado, marcaremos o campo `whatsapp_number` no perfil. Isso permitirá no webhook identificar usuário pelo número e aceitar notas.
+    - Também podemos permitir login via WhatsApp (menos comum, mas poderia ser: usuário manda mensagem "LOGIN <email>" e o sistema responde com um link de sessão – porém isso foge do comum, manter apenas associação é suficiente).
+- Se o usuário não associar, ele ainda pode usar o app normalmente, apenas não conseguirá enviar notas via WhatsApp até fazê-lo. Poderíamos criar automaticamente a associação se detectarmos uma mensagem de um número não associado: por exemplo, enviando de volta "Para vincular seu WhatsApp, responda com seu email de cadastro". Mas essa lógica extra só se necessário.
+    
+
+## Backend e Banco de Dados
+
+### Arquitetura de Backend Proposta
+
+Para dar suporte a autenticação, armazenamento e integrações de IA, precisamos de um backend robusto e escalável. Duas abordagens viáveis serão consideradas:
+
+**1. Backend BaaS (Backend as a Service) - Ex: Firebase/Supabase**  
+Optar por uma plataforma como Firebase ou Supabase pode **agilizar o desenvolvimento** e reduzir a necessidade de gerenciar servidores:
+
+- _Autenticação_: Firebase Auth fornece login/email prontos (com opções de providers sociais) e lida com armazenamento seguro de senhas e tokens. Supabase Auth similarmente oferece login com **Argon2 por padrão** (implementação segura) e JWT.
+- _Banco de Dados_: Firebase Firestore (NoSQL em tempo real) seria usado para armazenar as notas e metadados. Isso permite sincronização instantânea para clientes conectados (ideal para ver a nota aparecer no app/web assim que salva). Supabase oferece PostgreSQL (SQL) o que daria mais flexibilidade em consultas (por ex, buscar notas por texto, ou agrupar por categoria via SQL).
+- _Functions/Edge Functions_: Para integrações externas (ChatGPT, Perplexity, WhatsApp webhook), podemos usar Cloud Functions do Firebase (ou Supabase Edge Functions em Deno) para rodar código backend sem gerenciar um servidor full. Por exemplo:
+    - Uma Cloud Function HTTP para receber webhooks do WhatsApp (chamada pelo Graph API do WhatsApp quando chega mensagem).
+    - Funções para chamar a OpenAI API e Perplexity API, de forma segura (as keys de API ficam protegidas no backend, não expostas no app).
+    - Função programada (cron) diária para resetar contadores de uso (caso não queiramos computar janelas de 24h dinamicamente).
+- _Escalabilidade_: Essas soluções escalam automaticamente. Firestore lida com grande número de conexões e volume (cobrando conforme uso). Functions sobem instâncias conforme demanda. Isso suporta o crescimento sem muita reconfiguração.
+
+Integração do Flutter com Firebase é direta (via pacotes oficiais). Por exemplo, Flutter pode facilmente interagir com Firestore para ler/escrever notas em tempo real, e usar Firebase Auth SDK para login, recebendo tokens sem desenvolver tudo manualmente.
+
+**2. Backend Personalizado (Node.js + PostgreSQL)**  
+Caso queiramos mais controle ou funcionalidades personalizadas, podemos implementar um servidor próprio:
+
+- _Aplicação Node.js_: Usando um framework como **Express** ou **Fastify** para criar rotas REST (ou GraphQL com Apollo se preferir).
+- _Banco de Dados SQL_: **PostgreSQL** seria uma escolha segura (robusto, relacional, suporta JSON fields para flexibilidade). Montaremos tabelas como:
+    - `users` (id, email, hash_senha, plano, etc.)
+    - `notes` (id, user_id, texto, data_criação, categoria, origem, etc.)
+    - `note_insights` (opcional, para armazenar resultados de IA vinculados a nota, como resumo, prazos sugeridos, etc., caso não queiramos misturar na tabela principal)
+    - `usage_logs` (registro de chamadas de API feitas pelo usuário e data, para controle de limites)
+    - possivelmente `subscriptions` (para gerenciar status Premium, data de expiração, etc., a depender da integração com pagamentos).
+- _Autenticação e Segurança_: Podemos implementar manualmente:
+    - Endpoints de `/register` e `/login` que lidam com criação e validação de usuário.
+    - Hash de senha com biblioteca **bcrypt** ou **argon2** (bibliotecas npm disponíveis, e.g. `bcryptjs` ou `argon2`).
+    - Geração de **JWT** para sessões; middleware para validar token nas requisições subsequentes.
+    - Uso de HTTPS obrigatório em produção (talvez via proxy/Load Balancer ou integrando TLS diretamente).
+- _Camada de IA e Integrações_:
+    - Utilizar a biblioteca oficial da OpenAI para Node (ou simplesmente `axios`/`fetch` para chamar endpoints REST) para enviar prompts e receber respostas do ChatGPT.
+    - Chamar a API do Perplexity via HTTP. (Se não houver lib, construir requests conforme doc do Perplexity).
+    - Conectar ao **WhatsApp Cloud API**: o webhook do WhatsApp chamará uma rota no nosso servidor (ex: `/webhook/whatsapp`), e usaremos a SDK do WhatsApp (ou chamadas HTTP com token) para responder. Podemos usar libs como `whatsapp-cloud-api` (existem algumas não-oficiais) ou simplesmente o Graph API via HTTP.
+    - Envio de email: integrar com um serviço de e-mail (ex: SendGrid, SMTP) ou usar NodeMailer para enviar os relatórios/notas por email quando solicitados.
+- _Hospedagem_: Esse backend Node pode ser containerizado (Docker) e rodar em serviços como Heroku, AWS (Elastic Beanstalk ou ECS), Google Cloud Run, etc. Para escala, podemos usar Kubernetes ou escalonamento automático de instâncias baseadas em uso. O **banco PostgreSQL** pode ser um serviço gerenciado (AWS RDS, Supabase DB, Heroku Postgres) para confiabilidade e backups.
+- _Considerações de Escalabilidade_: Precisaremos monitorar performance. Node+Postgres aguenta milhares de usuários, mas as chamadas de IA podem ser pesadas – portanto, possivelmente processá-las de forma assíncrona (colocar numa fila com RabbitMQ ou Firebase Tasks) se o volume for muito grande, para não bloquear requisições imediatas do usuário. No MVP, chamadas síncronas com loading no app são aceitáveis.
+
+**Comparativo e Escolha**: Para minimizar esforço humano adicional, **usar Firebase ou Supabase** seria recomendado, já que fornece muitos componentes prontos e integrações (principalmente se for fornecido para uma IA gerar código, facilita usar serviços conhecidos). Por exemplo, com Firebase poderíamos evitar escrever código de cadastro/login e focar nas funções de IA e UI. Além disso, Flutter tem plugins maduros para essas plataformas. Entretanto, vamos estruturar nosso projeto de forma que seja **modular**, permitindo trocar o backend se necessário:
+
+- Abstrairemos em serviços (por exemplo, um `AuthService` que hoje usa Firebase Auth, mas poderia ser adaptado para usar nosso próprio API).
+- Similarmente um `NoteRepository` que esconde se está pegando de Firestore ou via REST do nosso servidor.
+
+Essa modularização é importante para não amarrar o app a uma implementação única.
+
+### Modelagem de Dados (Nível Lógico)
+
+Independente da tecnologia de armazenamento, definimos os principais modelos de dados:
+
+- **Usuário (User)**:
+    
+    - `id`: identificador único (UUID ou auto-incremento).
+    - `nome`: nome do usuário (opcional, para exibição).
+    - `email`: string (único, indexado).
+    - `telefone`: string (para WhatsApp, único se usado).
+    - `senha_hash`: hash seguro da senha + salt (se usar autenticação própria; no Firebase, esse campo não é acessível diretamente pois fica gerenciado pelo serviço).
+    - `plano`: enum ("free" ou "premium"), ou um campo boolean `is_premium` + possivel `premium_expiration` (para trial e controle de assinatura).
+    - `created_at`: data de cadastro.
+    - Outros: flags como `trial_used` (se já usou o trial gratuito), `whatsapp_opt_in` (se concordou em receber WhatsApp), etc.
+- **Nota (Note)**:
+    
+    - `id`: identificador único da nota.
+    - `user_id`: referência ao usuário dono.
+    - `conteudo`: texto completo da anotação.
+    - `origem`: enum ("whatsapp", "app", "web") indicando de onde veio.
+    - `categoria`: categoria/área temática primária (string, ex: "Trabalho", "Saúde"). Poderia ser normalizado em tabela separada de categorias, mas pode ficar como string para agilidade (ou array de strings se admitir múltiplas categorias).
+    - `tags`: lista de tags adicionais (se aplicável, ex: ["projetoX", "prioridade alta"]).
+    - `data_criacao`: timestamp da criação.
+    - `data_atualizacao`: timestamp caso edição posterior.
+    - `prazo_sugerido`: timestamp com um deadline sugerido (opcional, se IA identificou).
+    - `resumo_ia`: campo de texto com um resumo gerado pela IA (opcional).
+    - `conselho_ia`: campo de texto com conselho/insight gerado (opcional).
+    - Possível `relacionadas`: lista de IDs de notas relacionadas (descobertas via IA).
+    - _Observação_: Em Firestore, campos opcionais podem simplesmente não existir até terem valor. Em SQL, usar colunas que admitem NULL.
+- **Log de uso API (UsageLog)**:
+    
+    - `id`, `user_id`, `tipo_chamada` (e.g., "perplexity"), `data_hora`.
+    - Esse registro pode auxiliar em auditoria e para contar chamadas diárias. Em vez de log, poderia ser um campo no usuário tipo `calls_today` e `last_call_date`, mas logs dão histórico completo.
+    - Se usar Firestore, podemos não precisar de coleção de log, bastaria Cloud Function que recusa se mais de 1 doc existe naquele dia para aquele user; mas usar contagem + data no perfil pode ser mais simples.
+- **Assinatura (Subscription)**:
+    
+    - Se integrarmos com compras, uma tabela ou coleção para armazenar detalhes da assinatura Premium do usuário:
+        - `user_id`, `status` (ativo, cancelado, expirado), `plano` (mensal, anual), `data_inicio`, `data_fim` (estimado ou próximo billing).
+        - No caso de usar apenas verificação do recibo de app stores, pode não precisar armazenar tudo isso, mas é bom para referência e para a versão Web.
+- **Outras**: _Categoria_ poderia ser uma entidade separada se quisermos permitir customização (ex: o usuário cria categorias próprias). Mas se a IA gera automaticamente baseadas em temas fixos, manteremos como um conjunto fixo inicialmente. Podemos ter uma lista pré-definida de áreas (Trabalho, Saúde, Finanças, Estudos, Pessoal, etc.) e talvez permitir o usuário renomear ou acrescentar.
+    
+
+### Segurança e Controle de Acesso no Backend
+
+- **Regras de acesso**: Somente permitir ao usuário autenticado acesso às suas próprias notas:
+    - Em Firebase Firestore, configuraremos _security rules_ para que leituras/escritas em `notes` exijam `request.auth.uid == note.user_id`.
+    - Em uma API custom, implementaremos middleware de autenticação para todas rotas de dados, extraindo o user do token e filtrando queries pelo seu user_id. Qualquer tentativa de acessar recurso de outro usuário resultará em 403 Forbidden.
+- **Criptografia em trânsito**: Todo o tráfego entre app e backend será HTTPS. No Firebase isso é implícito (endpoints Firestore/Functions), num backend próprio precisamos configurar SSL (ou usar um proxy com SSL).
+- **Criptografia em repouso**: Se usar Firestore, dados ficam criptografados no servidor do Google automaticamente. Em PostgreSQL, podemos habilitar cifragem de disco ou confiar no gerenciamento cloud. Dados muito sensíveis poderíamos criptografar no app antes de enviar, mas no caso de notas pessoais não críticas, não é necessário, porém senha sempre hash (já tratado).
+- **Logs e monitoramento**: Ativar logs de auditoria de login, mudanças importantes (ex: deleção de notas, alterações de plano) para possivelmente restaurar dados ou detectar atividades anômalas.

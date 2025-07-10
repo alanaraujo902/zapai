@@ -1,0 +1,118 @@
+erDiagram
+    %% Entidades Principais
+    USERS {
+        uuid id PK
+        string email UK
+        string password_hash
+        string phone_number UK
+        string name
+        enum subscription_status
+        json preferences
+        timestamp created_at
+        timestamp updated_at
+        boolean trial_used
+        boolean whatsapp_opt_in
+    }
+
+    NOTES {
+        uuid id PK
+        uuid user_id FK
+        text content
+        enum source
+        string category
+        json tags
+        timestamp created_at
+        timestamp updated_at
+        timestamp ai_processed_at
+        timestamp deadline_suggested
+        json related_notes
+        enum status
+        json metadata
+    }
+
+    CATEGORIES {
+        uuid id PK
+        uuid user_id FK
+        string name
+        uuid parent_category_id FK
+        string color
+        string icon
+        timestamp created_at
+        boolean is_system_generated
+        integer sort_order
+    }
+
+    INSIGHTS {
+        uuid id PK
+        uuid user_id FK
+        uuid note_id FK
+        enum insight_type
+        text content
+        float confidence_score
+        timestamp created_at
+        boolean is_dismissed
+        json metadata
+    }
+
+    SESSIONS {
+        uuid id PK
+        uuid user_id FK
+        string token_hash
+        timestamp expires_at
+        timestamp created_at
+        timestamp last_accessed
+        json device_info
+        boolean is_active
+    }
+
+    USAGE_LOGS {
+        uuid id PK
+        uuid user_id FK
+        enum api_type
+        string endpoint
+        timestamp created_at
+        json request_metadata
+        integer tokens_used
+        float cost
+    }
+
+    SUBSCRIPTIONS {
+        uuid id PK
+        uuid user_id FK
+        enum plan_type
+        enum status
+        timestamp start_date
+        timestamp end_date
+        timestamp next_billing
+        float amount
+        string payment_method_id
+        json metadata
+    }
+
+    MEDIA_FILES {
+        uuid id PK
+        uuid note_id FK
+        string file_name
+        string file_type
+        string file_path
+        integer file_size
+        string mime_type
+        text extracted_text
+        timestamp created_at
+        json metadata
+    }
+
+    %% Relacionamentos
+    USERS ||--o{ NOTES : "possui"
+    USERS ||--o{ CATEGORIES : "cria"
+    USERS ||--o{ INSIGHTS : "recebe"
+    USERS ||--o{ SESSIONS : "mantém"
+    USERS ||--o{ USAGE_LOGS : "gera"
+    USERS ||--o{ SUBSCRIPTIONS : "possui"
+    
+    NOTES ||--o{ INSIGHTS : "gera"
+    NOTES ||--o{ MEDIA_FILES : "contém"
+    
+    CATEGORIES ||--o{ CATEGORIES : "hierarquia"
+    CATEGORIES ||--o{ NOTES : "categoriza"
+

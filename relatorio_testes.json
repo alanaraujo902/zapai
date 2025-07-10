@@ -1,0 +1,44 @@
+[
+  {
+    "teste": "Health Check Backend",
+    "sucesso": true,
+    "timestamp": "2025-07-09T22:10:06.825122",
+    "detalhes": "Status: 200, Resposta: {'message': 'Sistema de Anotações com IA funcionando', 'status': 'healthy', 'version': '1.0.0'}"
+  },
+  {
+    "teste": "Frontend Carregando",
+    "sucesso": false,
+    "timestamp": "2025-07-09T22:10:06.830380",
+    "detalhes": "Status: 200"
+  },
+  {
+    "teste": "Registro de Usuário",
+    "sucesso": false,
+    "timestamp": "2025-07-09T22:10:06.990547",
+    "detalhes": "Status: 500, Erro: {\n  \"error\": \"Erro interno do servidor\"\n}\n"
+  },
+  {
+    "teste": "Criar Anotação",
+    "sucesso": false,
+    "timestamp": "2025-07-09T22:10:06.990644",
+    "detalhes": "Token não disponível"
+  },
+  {
+    "teste": "Listar Anotações",
+    "sucesso": false,
+    "timestamp": "2025-07-09T22:10:06.990656",
+    "detalhes": "Token não disponível"
+  },
+  {
+    "teste": "Conexões IA",
+    "sucesso": false,
+    "timestamp": "2025-07-09T22:10:06.990681",
+    "detalhes": "Token não disponível"
+  },
+  {
+    "teste": "Webhook WhatsApp",
+    "sucesso": true,
+    "timestamp": "2025-07-09T22:10:06.993788",
+    "detalhes": "Status: 403 (endpoint disponível)"
+  }
+]

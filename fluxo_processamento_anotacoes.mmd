@@ -1,0 +1,58 @@
+sequenceDiagram
+    participant U as 👤 Usuário
+    participant WA as 📱 WhatsApp
+    participant WH as 🔗 Webhook
+    participant WS as 💬 WhatsApp Service
+    participant DB as 🗄️ Database
+    participant Q as 📨 Queue
+    participant AI as 🤖 AI Service
+    participant GPT as 🧠 ChatGPT
+    participant PX as 🔎 Perplexity
+    participant BR as 📡 Broker
+    participant APP as 📱 App Flutter
+
+    Note over U,APP: Fluxo de Processamento de Anotações
+
+    %% Captura via WhatsApp
+    U->>WA: Envia mensagem/mídia
+    WA->>WH: Webhook HTTP POST
+    WH->>WS: Processa webhook
+    
+    %% Validação e Armazenamento
+    WS->>WS: Valida assinatura
+    WS->>DB: Busca usuário por telefone
+    alt Usuário encontrado
+        WS->>DB: Salva anotação (status: pending)
+        WS->>WA: Envia confirmação
+        WS->>Q: Adiciona à fila IA
+    else Usuário não encontrado
+        WS->>WA: Solicita registro
+        WS->>WS: Aguarda resposta registro
+    end
+
+    %% Processamento IA Assíncrono
+    Q->>AI: Processa anotação da fila
+    AI->>GPT: Solicita categorização
+    GPT-->>AI: Retorna categoria + tags
+    
+    AI->>AI: Verifica se precisa enriquecimento
+    alt Precisa contexto externo
+        AI->>PX: Busca informações relacionadas
+        PX-->>AI: Retorna contexto adicional
+    end
+    
+    AI->>DB: Atualiza anotação (status: processed)
+    AI->>BR: Publica evento "anotação processada"
+
+    %% Sincronização Tempo Real
+    BR->>APP: Notifica nova anotação
+    APP->>APP: Atualiza interface local
+    
+    %% Visualização pelo Usuário
+    U->>APP: Abre aplicativo
+    APP->>DB: Busca anotações atualizadas
+    DB-->>APP: Retorna anotações organizadas
+    APP->>U: Exibe anotações categorizadas
+
+    Note over U,APP: Anotação disponível em interface organizada
+

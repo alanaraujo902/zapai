@@ -1,0 +1,97 @@
+graph TB
+    %% Clientes
+    subgraph "Clientes"
+        Mobile[📱 App Mobile<br/>Flutter iOS/Android]
+        Web[🌐 App Web<br/>Flutter Web]
+        WA[📞 WhatsApp<br/>Business API]
+    end
+
+    %% API Gateway
+    Gateway[🚪 API Gateway<br/>Kong/AWS API Gateway<br/>- Autenticação JWT<br/>- Rate Limiting<br/>- Logging<br/>- Roteamento]
+
+    %% Microserviços
+    subgraph "Microserviços"
+        AuthSvc[🔐 Serviço Autenticação<br/>- Registro/Login<br/>- JWT Tokens<br/>- Sessões]
+        
+        NoteSvc[📝 Serviço Anotações<br/>- CRUD Anotações<br/>- Categorização<br/>- Busca<br/>- Sincronização]
+        
+        AISvc[🤖 Serviço IA<br/>- ChatGPT Integration<br/>- Perplexity Integration<br/>- Processamento Assíncrono<br/>- Cache Resultados]
+        
+        WhatsAppSvc[💬 Serviço WhatsApp<br/>- Webhook Handler<br/>- Processamento Mídia<br/>- Envio Mensagens<br/>- Associação Usuários]
+        
+        NotifSvc[🔔 Serviço Notificações<br/>- Push Notifications<br/>- Email Transacional<br/>- Templates<br/>- Tracking]
+    end
+
+    %% Message Broker
+    Broker[📨 Message Broker<br/>Redis Pub/Sub<br/>- Eventos Sistema<br/>- Sincronização<br/>- Processamento Assíncrono]
+
+    %% Armazenamento
+    subgraph "Armazenamento"
+        PostgreSQL[(🐘 PostgreSQL<br/>Dados Relacionais<br/>- Usuários<br/>- Metadados<br/>- Sessões)]
+        
+        MongoDB[(🍃 MongoDB<br/>Dados Não Estruturados<br/>- Anotações<br/>- Conteúdo Mídia<br/>- Logs)]
+        
+        Redis[(⚡ Redis<br/>Cache & Sessões<br/>- Cache API<br/>- Sessões Ativas<br/>- Rate Limiting)]
+        
+        Elasticsearch[(🔍 Elasticsearch<br/>Busca Textual<br/>- Índices Anotações<br/>- Busca Full-Text<br/>- Agregações)]
+    end
+
+    %% APIs Externas
+    subgraph "APIs Externas"
+        OpenAI[🧠 OpenAI<br/>ChatGPT API<br/>- Categorização<br/>- Insights<br/>- Análise]
+        
+        Perplexity[🔎 Perplexity<br/>Search API<br/>- Enriquecimento<br/>- Contexto Externo<br/>- Pesquisa Web]
+        
+        WhatsAppAPI[📱 WhatsApp<br/>Business API<br/>- Webhook<br/>- Envio/Recebimento<br/>- Mídia]
+    end
+
+    %% Conexões Clientes
+    Mobile --> Gateway
+    Web --> Gateway
+    WA --> WhatsAppSvc
+
+    %% Conexões Gateway
+    Gateway --> AuthSvc
+    Gateway --> NoteSvc
+    Gateway --> AISvc
+    Gateway --> NotifSvc
+
+    %% Conexões Serviços
+    AuthSvc --> PostgreSQL
+    AuthSvc --> Redis
+    
+    NoteSvc --> PostgreSQL
+    NoteSvc --> MongoDB
+    NoteSvc --> Elasticsearch
+    NoteSvc --> Broker
+    
+    AISvc --> OpenAI
+    AISvc --> Perplexity
+    AISvc --> Redis
+    AISvc --> Broker
+    
+    WhatsAppSvc --> WhatsAppAPI
+    WhatsAppSvc --> PostgreSQL
+    WhatsAppSvc --> MongoDB
+    WhatsAppSvc --> Broker
+    
+    NotifSvc --> Broker
+    NotifSvc --> Redis
+
+    %% Sincronização via Broker
+    Broker --> Mobile
+    Broker --> Web
+
+    %% Estilos
+    classDef client fill:#e1f5fe
+    classDef service fill:#f3e5f5
+    classDef storage fill:#e8f5e8
+    classDef external fill:#fff3e0
+    classDef gateway fill:#fce4ec
+
+    class Mobile,Web,WA client
+    class AuthSvc,NoteSvc,AISvc,WhatsAppSvc,NotifSvc service
+    class PostgreSQL,MongoDB,Redis,Elasticsearch storage
+    class OpenAI,Perplexity,WhatsAppAPI external
+    class Gateway gateway
+

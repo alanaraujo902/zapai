@@ -1,0 +1,221 @@
+## Estrutura de Pastas e Organização do Código
+
+Manteremos o código bem estruturado, separando responsabilidade por camadas e funcionalidades. Sugestão para o projeto Flutter:
+
+```
+lib/
+├── main.dart          # Ponto de entrada do app, configura tema e rotas
+├── app.dart           # (Opcional) Inicialização do app, providers, etc.
+├── models/            # Definição de modelos de dados (Dart classes)
+│   ├── user.dart
+│   ├── note.dart
+│   └── ... (outros como talvez category.dart)
+├── services/          # Comunicação com backend e serviços externos
+│   ├── auth_service.dart      # Login, logout, registro (via Firebase Auth ou API)
+│   ├── note_service.dart      # CRUD de notas, chamada AI (pode subdividir AI separado)
+│   ├── ai_service.dart        # (Opcional) Funções que chamam OpenAI/Perplexity
+│   ├── whatsapp_service.dart  # (Opcional) Se tiver interações para abrir WhatsApp ou soquete (talvez não necessário no cliente)
+│   └── purchase_service.dart  # Gerenciar IAP (listar produtos, comprar, verificar estado)
+├── providers/        # (se usar Provider/Riverpod) ou blocs/ if BLoC
+│   ├── auth_provider.dart    # Estado do usuário (logado, dados do perfil)
+│   ├── notes_provider.dart   # Lista de notas, operações de adicionar/remover/edit
+│   ├── ai_provider.dart      # Estado de operações IA em andamento (ex: loading, result)
+│   └── theme_provider.dart   # Para toggle dark/light mode
+├── screens/          # Telas da aplicação (UI Widgets organizados por tela)
+│   ├── login_screen.dart
+│   ├── register_screen.dart
+│   ├── home_screen.dart       # Tela principal contendo estrutura: categorias + lista notas
+│   ├── note_detail_screen.dart
+│   ├── settings_screen.dart
+│   ├── premium_screen.dart    # Tela explicando benefícios Premium e botão assinar
+│   └── ... (outros conforme necessidade, ex: onboarding_screen)
+├── widgets/          # Widgets reutilizáveis ou componentes menores
+│   ├── note_card.dart         # widget para exibir preview de nota na lista
+│   ├── category_list_drawer.dart  # widget para lista de categorias (mobile)
+│   ├── ai_insight_box.dart    # widget para mostrar insights da IA no detalhe da nota
+│   └── ... (botões custom, dialogs etc.)
+└── utils/
+    ├── constants.dart        # Strings constantes, chaves de API, etc (embora chaves reais não fiquem aqui no client)
+    ├── helpers.dart          # Funções utilitárias (ex: formatar data)
+    └── extensions.dart       # Extensões úteis (ex: String capitalize, DateTime toFormatted)
+```
+
+Explicação:
+
+- **models**: Representações dos objetos (espelhando as tabelas/coleções do DB). Podem incluir métodos de (de)serialização JSON se comunicarmos via HTTP.
+- **services**: Camada responsável por interação externa. Por ex, `AuthService` usa Firebase Auth SDK ou faz HTTP request para login, mas a UI não sabe qual. Isso facilita trocar implementação backend sem alterar tela.
+- **providers**: Gerenciam estado e lógica de negócio, usam os services para efetivamente fazer as coisas. Ex: `NotesProvider` tem lista de `Note`, método `fetchNotes()` que chama `NoteService.getAllForUser()` e atualiza a lista. Notifica UI via notifyListeners (no Provider).
+- **screens**: Contêm código de interface, geralmente um `Scaffold` e dentro chama widgets apropriados e providers para dados.
+- **widgets**: Partes menores para evitar repetir código. Ex: um card de nota usado tanto em lista principal quanto talvez em resultado de busca.
+- **utils**: Diversos auxílios. Por exemplo, constantes para guardar nome de SharedPreferences, ou URL base do API, etc. _Importante:_ Chaves secretas como API keys do OpenAI não devem estar no app (no caso de backend próprio, manter lá). Se usar Firebase Functions, o app não precisa ter a key secreta, só chamar a function autenticada.
+
+Para o **backend Node (caso usado)**, uma possível estrutura:
+
+```
+backend/
+├── src/
+│   ├── index.js          # inicia o servidor express
+│   ├── config/           # configs como credenciais (maybe .env for secrets)
+│   ├── routes/           # definições de rotas e seus controladores
+│   │   ├── auth.js       # rotas /login, /register
+│   │   ├── notes.js      # rotas /notes (GET, POST, etc.)
+│   │   ├── ai.js         # rotas /ai (por ex, /ai/categorize, talvez não expor muito)
+│   │   ├── webhook.js    # rotas /webhook/whatsapp, /webhook/stripe
+│   │   └── ... 
+│   ├── controllers/      # funções que implementam a lógica das rotas
+│   │   ├── authController.js
+│   │   ├── notesController.js
+│   │   ├── aiController.js
+│   │   └── ...
+│   ├── models/           # modelos de banco de dados (usando ORM ou consultas)
+│   │   ├── User.js       # define tabela usuário (se usando ORM)
+│   │   ├── Note.js
+│   │   └── ...
+│   ├── services/         # serviços externos
+│   │   ├── openaiService.js      # funções para chamar OpenAI
+│   │   ├── perplexityService.js  # talvez funções para chamar Perplexity
+│   │   ├── whatsappService.js    # para enviar mensagens via WhatsApp API
+│   │   └── emailService.js       # para envio de e-mails
+│   └── utils/            # utilitários (ex: função de hashing, middleware de auth JWT, etc.)
+│       ├── authMiddleware.js    # verifica JWT em rotas protegidas
+│       ├── hashUtil.js          # encapsula argon2/bcrypt usage
+│       ├── aiPrompts.js         # templates de prompt para IA
+│       └── logger.js            # configuração de logger
+├── test/                 # testes unitários (auth.test.js, note.test.js, etc.)
+├── package.json
+└── .env                  # variáveis de ambiente (chaves API, DB URL, etc.)
+```
+
+Essa organização separa as preocupações:
+
+- Rotas definem endpoints e delegam para controllers.
+- Controllers obtêm dados do request, chamam models (ou serviços) e devolvem respostas.
+- Models cuidam da interação com o DB.
+- Services para integrações externas e lógica que pode ser isolada (ex: formatar email).
+- Utils para funções auxiliares e middlewares.
+- .env para segredos (que não se versiona; para deploy, usar variáveis do ambiente do servidor).
+
+Se o backend for Firebase:
+
+- Teremos menos estrutura de arquivos. Basicamente:
+    - `/functions` pasta com funções index.js (ou TypeScript). Podemos criar subarquivos por função para organização.
+    - Regras de segurança Firestore definidas em `firestore.rules`.
+    - Cloud function examples: `functions/whatsappWebhook.js`, `functions/openAIFunc.js` etc, e registrar em `index.js`.
+    - Em Flutter, a integração se dá via Firebase SDK, não rota manual.
+
+## Planos de Teste e Garantia de Qualidade
+
+Para garantir a qualidade do projeto e funcionamento conforme esperado, diversas camadas de testes serão empregadas:
+
+### Testes de Unidade (Unit Tests)
+
+- **Lógica de Aplicação**: Testaremos funções isoladas, por exemplo:
+    
+    - Funções de categorização local (se houver alguma heurística fallback sem IA).
+    - Função que calcula se o usuário atingiu limite de uso diário.
+    - Utilitários, como formatação de datas, parser de respostas da IA (por ex, se ChatGPT retorna categorias numa string JSON, testar se o parser extrai corretamente).
+    - No backend (se houver), funções de controllers e services: simular entradas e verificar se retornam valores esperados (usando stubs/mocks para chamadas externas).
+- **Models e Serialização**: Testar que os modelos (Dart e/ou Node) convertem corretamente de e para formatos de dados:
+    
+    - Em Flutter, testar `Note.fromJson` e `Note.toJson` se implementados.
+    - No Node, testar que o ORM salva e recupera dados corretamente, ou que validações de modelos funcionam.
+
+### Testes de Widget (Flutter)
+
+- Verificar componentes isoladamente:
+    
+    - O `NoteCard` exibe corretamente os dados passados (título, ícones conforme origem).
+    - O toggle de modo escuro muda o tema dos elementos.
+    - Validação de formulário de login (inserir email inválido e ver se mostra erro localmente).
+- Testes de navegabilidade:
+    
+    - Simular sequência: usuário não logado abre app -> vê tela de login -> insere dados -> ao submeter, se Service de login for mockado para sucesso, o estado AuthProvider deve atualizar para loggedIn e app navega para Home.
+    - Ao abrir HomeScreen, se NotesProvider tiver X notas, a lista deve exibi-las.
+- Podemos usar o pacote de **testes de integração do Flutter (integration_test)** para fluxos mais amplos (ver abaixo).
+    
+
+### Testes de Integração (End-to-End)
+
+Estes testes verificam o sistema funcionando como um todo:
+
+- **No Flutter (integration_test)**: Escrever cenários simulando um usuário real:
+    
+    1. Cadastro -> Criar nota -> Ver se aparece na lista -> Simular recepção de resposta IA (talvez stubar chamadas ou usar um servidor de teste).
+    2. Enviar uma mensagem WhatsApp -> (Aqui talvez não dê para automatizar pelo Flutter test, mas podemos simular chamando diretamente a função webhook do backend).
+    3. Fluxo de compra (difícil simular IAP em teste automático; isso pode ser feito manualmente em sandbox).
+- Para backend Node, podemos usar testes de integração com supertest (simula requisições HTTP):
+    
+    - Testar que POST /register cria usuário e hash senha.
+    - POST /login retorna token.
+    - GET /notes (com token) retorna somente notas do usuário.
+    - Webhook endpoints: simular um payload do WhatsApp e ver se cria nota no DB e possivelmente envia resposta (poderíamos mockar a chamada de envio externo para não realmente mandar msg).
+- **Teste manual em ambiente staging**: Antes de produção, rodar o app conectando a um backend de teste e:
+    
+    - Fluxos principais: cadastro/login, adicionar notas, verificar organização IA, limites free (tentar 2 perguntas no dia e ver bloqueio), upgrade para premium (usar sandbox account nas lojas ou Stripe test).
+    - Testar em dispositivos reais diversos (um Android, um iPhone, diferentes navegadores para web) para ajustar detalhes de UI responsiva.
+
+### Ferramentas de QA Adicionais
+
+- **CI**: Configurar Continuous Integration (ex: GitHub Actions) para rodar os testes unitários a cada push, garantindo que nada quebre inadvertidamente.
+- **Análise de código**: Usar `flutter analyze` e `dart analyze` para manter o código padrão e evitar erros comuns. Talvez integrar `lint` com regras padronizadas.
+- **Perfil de performance**: Testar o app com muitos dados (ex: 1000 notas) para ver se continua fluido. Identificar possíveis gargalos (ex: usar LazyListView, paginação se necessário).
+- **Segurança**: Se possível, realizar testes de segurança:
+    - Verificar que chamadas não autenticadas não obtêm dados (testar via Postman acessos não autorizados).
+    - Testar regras do Firestore (usando emulador e tentando quebrar regras).
+    - Pentest básico de API (input malicioso, SQL injection se SQL, etc.).
+
+## Implantação (Deploy) e Publicação
+
+Após o desenvolvimento e testes, seguiremos com deploy nas respectivas plataformas:
+
+### Publicação do Aplicativo Flutter
+
+- **Android (Google Play)**:
+    
+    - Gerar o APK/AAB release: configurar keystore de assinatura (já integrar no build Gradle). Lembrar de incluir as permissões necessárias no AndroidManifest (por ex, internet, talvez no needs no special unless using camera/audio).
+    - Testar a versão release em um dispositivo.
+    - Criar a listagem na Google Play Console: título do app, descrição (ressaltando uso de IA, recursos), enviar capturas de tela (modo claro e escuro, mobile e tablet).
+    - Configurar produtos in-app (assinatura Premium mensal, com trial de 7 dias).
+    - Enviar para revisão interna ou track de teste fechado inicialmente, depois promover a produção. (Duração da revisão ~ alguns dias).
+    - Após publicação, monitorar _Android Vitals_ e feedbacks de crash no console.
+- **iOS (Apple App Store)**:
+    
+    - Configurar o projeto para iOS: definir _Bundle ID_, assinaturas (Provisioning Profile, Certificates).
+    - Arquivo Info.plist com Privacy usage descriptions se acessarmos algo sensível (não muito no nosso caso, talvez se gravasse áudio).
+    - Gerar build via Xcode (podemos use `flutter build ios` e depois archive no Xcode).
+    - TestFlight: enviar para TestFlight (teste interno em alguns devices iOS, validar UI, login Apple exigirá Apple Sign In if we had it, mas não temos).
+    - Configurar in-app purchase no App Store Connect: criar o produto de assinatura, trial, preços para regiões.
+    - Preencher metadata do app (descrição, categorias, classificação indicativa - provavelmente 4+).
+    - Submeter para revisão Apple. Apple possivelmente vai testar a funcionalidade inclusive de compra, então fornecer contas de teste se necessário ou vídeo mostrando. Destacar em notas de revisão qualquer coisa especial (por ex, se o app usa IA, garantir conformidade com políticas Apple sobre conteúdo gerado).
+    - Após aprovação, app disponível na App Store.
+- **Web**:
+    
+    - Fazer build Web (`flutter build web`), obter saída (HTML, JS, CSS).
+    - Escolher um hosting:
+        - Simples: **Firebase Hosting** (sob o mesmo projeto do Firebase se usado). Permite domínio próprio ou fornecido. Suporta SSL e fácil deploy via CLI. Configurar redirects se necessário para rotas do Flutter web (often just a catch-all to index.html).
+        - Ou usar **Vercel/Netlify**: conectar ao repositório e fazer deploy automático. Como é static, tranquilo.
+        - **Custom domain**: comprar um domínio e apontar. Se for pelo Firebase, integrar no console (DNS settings).
+    - Certificar que as chamadas de API no web respeitam CORS (habilitar no backend).
+    - Otimização: habilitar CDN caching para assets do Flutter web (imagens, etc) para melhor performance.
+- **Backend**:
+    
+    - Se Firebase: implantar Firestore regras (`firebase deploy --only firestore:rules`), Functions (`firebase deploy --only functions`).
+    - Monitorar quotas do Firebase (há limites gratuitos e custos por uso).
+    - Se Node:
+        - Hospedar no **Heroku** (fácil de começar): push para Heroku, setar vars de ambiente (DB url, API keys).
+        - Ou Dockerize e usar **Cloud Run** (Google) ou **AWS ECS Fargate**.
+        - Setup do banco: criar instância PostgreSQL (e.g., ElephantSQL or Supabase DB) e rodar migrations (criar tabelas).
+        - Configurar escalonamento (ex: 2 dynos Heroku for redundancy, or auto-scaling in Cloud Run).
+        - Set up domain for API if needed (or just use cloud service URL).
+        - Implementar HTTPS if not already (Heroku and Cloud Run handle TLS).
+- **Monitoramento pós-deploy**:
+    
+    - Integrar alguma ferramenta de crash reporting no app (Firebase Crashlytics, Sentry) para receber logs de falhas e corrigi-las rapidamente.
+    - Analytics: acompanhar uso de features (Firebase Analytics or simple logs) para ver quantos utilizam WhatsApp vs app, etc., o que pode orientar melhorias.
+    - Para backend Node, configurar logs (winston or similar) e possivelmente um serviço de monitoramento (like NewRelic) if scale demands.
+- **Manutenção**:
+    
+    - Planejar atualizações periódicas do app com melhorias e fixes.
+    - Manter dependências atualizadas, especialmente de segurança (ex: se for reportado vulnerabilidade em alguma lib).
+    - Ter backup automáticos do banco de dados (se SQL).
+    - Atender feedbacks dos usuários, por exemplo se IA sugerir algo inadequado, podemos ajustar prompts ou filtros.
